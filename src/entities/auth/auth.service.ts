@@ -19,7 +19,9 @@ import {
 export const authService = {
     // Generate JWT token
     generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-        return jwt.sign(payload, config.JWT_SECRET, {
+        const secretBuffer = Buffer.from(config.JWT_SECRET, 'utf-8')
+
+        return jwt.sign(payload, secretBuffer, {
             expiresIn: config.JWT_EXPIRES_IN,
         })
     },
