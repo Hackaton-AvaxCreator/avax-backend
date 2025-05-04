@@ -22,7 +22,7 @@ RUN bun run build
 RUN bun run db:generate
 
 # Expose the port
-EXPOSE 3010
+EXPOSE 3015
 
 # Start command - using bun run start
 CMD ["bun", "run", "start"]
