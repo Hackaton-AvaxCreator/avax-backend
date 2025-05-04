@@ -1,0 +1,69 @@
+// prisma/schema.prisma
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id            String   @id @default(uuid())
+    email         String   @unique
+    password      String?
+    walletAddress String?  @unique @map("wallet_address")
+    isCreator     Boolean  @default(false) @map("is_creator")
+    createdAt     DateTime @default(now()) @map("created_at")
+
+    createdContent   Content[] @relation("CreatorContent")
+    tokenAccount     Token?
+    sentPayments     Payment[] @relation("PaymentFrom")
+    receivedPayments Payment[] @relation("PaymentTo")
+
+    @@map("users")
+}
+
+model Content {
+    id        String   @id @default(uuid())
+    creatorId String   @map("creator_id")
+    title     String
+    price     Decimal  @db.Decimal(10, 2)
+    status    String   @default("ACTIVE") // ACTIVE | INACTIVE
+    createdAt DateTime @default(now()) @map("created_at")
+
+    // Relations
+    creator  User      @relation("CreatorContent", fields: [creatorId], references: [id])
+    payments Payment[]
+
+    @@map("content")
+}
+
+model Payment {
+    id          String   @id @default(uuid())
+    fromUserId  String   @map("from_user_id")
+    toUserId    String   @map("to_user_id")
+    contentId   String   @map("content_id")
+    amount      Decimal  @db.Decimal(10, 2)
+    platformFee Decimal  @map("platform_fee") @db.Decimal(10, 2)
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    // Relations
+    fromUser User    @relation("PaymentFrom", fields: [fromUserId], references: [id])
+    toUser   User    @relation("PaymentTo", fields: [toUserId], references: [id])
+    content  Content @relation(fields: [contentId], references: [id])
+
+    @@map("payments")
+}
+
+model Token {
+    id        String   @id @default(uuid())
+    userId    String   @unique @map("user_id")
+    balance   Decimal  @default(0) @db.Decimal(18, 8)
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    // Relations
+    user User @relation(fields: [userId], references: [id])
+
+    @@map("tokens")
+}
