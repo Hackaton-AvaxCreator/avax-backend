@@ -8,14 +8,14 @@ import { web3Controller } from './web3.controller'
 
 const router = Router()
 
-// Public routes
+// Rutas públicas
 router.get('/health', catchAsync(web3Controller.healthCheck))
 router.get('/network-info', catchAsync(web3Controller.getNetworkInfo))
 
-// Protected routes - Payment related
+// Rutas protegidas - Payment related
 router.use(authMiddleware)
 
-// Payment endpoints
+// Payment endpoints del paymentWeb3Controller
 router.post('/payments', catchAsync(paymentWeb3Controller.createPayment))
 router.patch('/payments/:paymentId', catchAsync(paymentWeb3Controller.updatePayment))
 router.get('/payments/:paymentId/status', catchAsync(paymentWeb3Controller.getPaymentStatus))
