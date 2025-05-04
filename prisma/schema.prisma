@@ -16,10 +16,11 @@ model User {
     isCreator     Boolean  @default(false) @map("is_creator")
     createdAt     DateTime @default(now()) @map("created_at")
 
-    createdContent   Content[] @relation("CreatorContent")
+    createdContent   Content[]          @relation("CreatorContent")
     tokenAccount     Token?
-    sentPayments     Payment[] @relation("PaymentFrom")
-    receivedPayments Payment[] @relation("PaymentTo")
+    sentPayments     Payment[]          @relation("PaymentFrom")
+    receivedPayments Payment[]          @relation("PaymentTo")
+    ownedContent     ContentOwnership[]
 
     @@map("users")
 }
@@ -32,38 +33,66 @@ model Content {
     status    String   @default("ACTIVE") // ACTIVE | INACTIVE
     createdAt DateTime @default(now()) @map("created_at")
 
+    // Smart contract ID if tokenized as NFT
+    tokenId    String? @map("token_id")
+    contractId String? @map("contract_id")
+
     // Relations
-    creator  User      @relation("CreatorContent", fields: [creatorId], references: [id])
+    creator  User               @relation("CreatorContent", fields: [creatorId], references: [id])
     payments Payment[]
+    owners   ContentOwnership[]
 
     @@map("content")
 }
 
 model Payment {
-    id          String   @id @default(uuid())
-    fromUserId  String   @map("from_user_id")
-    toUserId    String   @map("to_user_id")
-    contentId   String   @map("content_id")
-    amount      Decimal  @db.Decimal(10, 2)
-    platformFee Decimal  @map("platform_fee") @db.Decimal(10, 2)
-    createdAt   DateTime @default(now()) @map("created_at")
+    id              String    @id @default(uuid())
+    fromUserId      String    @map("from_user_id")
+    toUserId        String    @map("to_user_id")
+    contentId       String?   @map("content_id")
+    amount          Decimal   @db.Decimal(10, 2)
+    platformFee     Decimal   @map("platform_fee") @db.Decimal(10, 2)
+    type            String // 'purchase' | 'donation'
+    status          String    @default("PENDING") // PENDING | COMPLETED | FAILED
+    transactionHash String?   @map("transaction_hash")
+    createdAt       DateTime  @default(now()) @map("created_at")
+    confirmedAt     DateTime? @map("confirmed_at")
 
     // Relations
-    fromUser User    @relation("PaymentFrom", fields: [fromUserId], references: [id])
-    toUser   User    @relation("PaymentTo", fields: [toUserId], references: [id])
-    content  Content @relation(fields: [contentId], references: [id])
+    fromUser User     @relation("PaymentFrom", fields: [fromUserId], references: [id])
+    toUser   User     @relation("PaymentTo", fields: [toUserId], references: [id])
+    content  Content? @relation(fields: [contentId], references: [id])
 
     @@map("payments")
 }
 
 model Token {
-    id        String   @id @default(uuid())
-    userId    String   @unique @map("user_id")
-    balance   Decimal  @default(0) @db.Decimal(18, 8)
-    updatedAt DateTime @updatedAt @map("updated_at")
+    id           String    @id @default(uuid())
+    userId       String    @unique @map("user_id")
+    balance      Decimal   @default(0) @db.Decimal(18, 8)
+    stakedAmount Decimal   @default(0) @map("staked_amount") @db.Decimal(18, 8)
+    lockedUntil  DateTime? @map("locked_until")
+    lastStakeAt  DateTime? @map("last_stake_at")
+    updatedAt    DateTime  @updatedAt @map("updated_at")
 
     // Relations
     user User @relation(fields: [userId], references: [id])
 
     @@map("tokens")
+}
+
+// Track content ownership history
+model ContentOwnership {
+    id              String   @id @default(uuid())
+    userId          String   @map("user_id")
+    contentId       String   @map("content_id")
+    purchasePrice   Decimal  @map("purchase_price") @db.Decimal(10, 2)
+    transactionHash String?  @map("transaction_hash")
+    acquiredAt      DateTime @default(now()) @map("acquired_at")
+
+    // Relations
+    user    User    @relation(fields: [userId], references: [id])
+    content Content @relation(fields: [contentId], references: [id])
+
+    @@map("content_ownership")
 }

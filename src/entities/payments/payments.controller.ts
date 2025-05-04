@@ -97,7 +97,8 @@ export const paymentsController = {
                 fromUserId: userId,
                 toUserId,
                 contentId,
-                amount
+                amount,
+                type: 'PURCHASE'
             })
 
             res.status(201).json({

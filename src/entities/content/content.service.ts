@@ -1,5 +1,6 @@
 // src/entities/content/content.service.ts
 import { prisma } from '../../lib/prisma'
+import { Decimal } from '@prisma/client/runtime/library'
 import {
     CreateContentDto,
     UpdateContentDto,
@@ -17,7 +18,7 @@ export const contentService = {
             data: {
                 creatorId,
                 title: data.title,
-                price: data.price,
+                price: new Decimal(data.price),
                 status: 'ACTIVE'
             },
             include: {
@@ -62,8 +63,8 @@ export const contentService = {
 
         if (minPrice !== undefined || maxPrice !== undefined) {
             where.price = {}
-            if (minPrice !== undefined) where.price.gte = minPrice
-            if (maxPrice !== undefined) where.price.lte = maxPrice
+            if (minPrice !== undefined) where.price.gte = new Decimal(minPrice)
+            if (maxPrice !== undefined) where.price.lte = new Decimal(maxPrice)
         }
 
         if (search) {
@@ -145,7 +146,7 @@ export const contentService = {
             throw new Error('Content is not available for purchase')
         }
 
-        const amount = Number(content.price)
+        const amount = new Decimal(content.price)
 
         // Process payment (simplified for MVP)
         const payment = await prisma.payment.create({
@@ -153,8 +154,10 @@ export const contentService = {
                 fromUserId: userId,
                 toUserId: content.creatorId,
                 contentId,
-                amount,
-                platformFee: amount * 0.01
+                amount: amount,
+                platformFee: amount.mul(0.01),
+                type: 'PURCHASE',
+                status: 'COMPLETED',
             }
         })
 
@@ -162,7 +165,7 @@ export const contentService = {
         return {
             contentId,
             userId,
-            amount,
+            amount: Number(amount),
             status: 'COMPLETED',
             accessUrl: `/content/${contentId}/access`, // Mock access URL
             timestamp: payment.createdAt

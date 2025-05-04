@@ -7,6 +7,9 @@ export interface CreatePaymentDto {
     contentId: string
     amount: number
     paymentMethod?: string
+    type: 'PURCHASE' | 'SUBSCRIPTION'
+    status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
+    
   }
   
   // Response DTOs

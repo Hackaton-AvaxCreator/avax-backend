@@ -10,6 +10,7 @@ import contentRouter from './entities/content/content.router'
 import paymentsRouter from './entities/payments/payments.router'
 import tokensRouter from './entities/tokens/tokens.router'
 import usersRouter from './entities/users/users.router'
+import web3Router from './entities/web3/web3.router'
 
 // Middleware
 import { errorMiddleware } from './shared/middleware/error.middleware'
@@ -37,6 +38,7 @@ app.use('/api/users', authMiddleware, usersRouter)
 app.use('/api/content', authMiddleware, contentRouter)
 app.use('/api/payments', authMiddleware, paymentsRouter)
 app.use('/api/tokens', authMiddleware, tokensRouter)
+app.use('/api/web3', web3Router)
 
 // Error handling
 app.use(errorMiddleware)

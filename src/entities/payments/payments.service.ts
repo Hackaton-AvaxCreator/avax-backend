@@ -13,7 +13,7 @@ import {
 export const paymentsService = {
     // Create payment
     async createPayment(data: CreatePaymentDto): Promise<PaymentResponse> {
-        const { fromUserId, toUserId, contentId, amount } = data
+        const { fromUserId, toUserId, contentId, amount, type } = data
 
         // Calculate platform fee (1%)
         const platformFee = amount * 0.01
@@ -27,7 +27,8 @@ export const paymentsService = {
                     toUserId,
                     contentId,
                     amount: new Decimal(amount),
-                    platformFee: new Decimal(platformFee)
+                    platformFee: new Decimal(platformFee),
+                    type: 'PURCHASE'
                 }
             })
 

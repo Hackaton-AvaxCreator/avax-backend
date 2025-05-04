@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AvalCreator API Test - Core Wallet</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin-bottom: 30px; padding: 10px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input, textarea { margin: 5px 0; padding: 5px; width: 100%; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        .warning { color: orange; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+        .error { color: red; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AvalCreator API Test Interface</h1>
+        
+        <div class="section">
+            <h2>Wallet Connection</h2>
+            <div id="walletStatus" class="warning">No wallet detected</div>
+            <button onclick="detectWallet()">Detect Wallet</button>
+            <button onclick="connectCoreWallet()">Connect Core Wallet</button>
+            <button onclick="connectMetaMask()">Connect MetaMask</button>
+            <button onclick="addAvalancheNetwork()">Add Avalanche Network</button>
+            <div>Address: <span id="walletAddress"></span></div>
+            <div>Network: <span id="networkName"></span></div>
+            <button onclick="connectWalletAPI()">Connect to API</button>
+        </div>
+
+        <div class="section">
+            <h2>Authentication</h2>
+            <input id="email" placeholder="Email" value="test@example.com">
+            <input id="password" type="password" placeholder="Password" value="password123">
+            <button onclick="login()">Login</button>
+            <button onclick="register()">Register</button>
+            <div>Token: <input id="token" placeholder="JWT token" style="width: 500px;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Test Donation</h2>
+            <input id="toUserId" placeholder="To User ID">
+            <input id="amount" placeholder="Amount" value="1.5">
+            <button onclick="createDonation()">Create Donation</button>
+            <button onclick="simulateTransaction()">Simulate Transaction</button>
+        </div>
+
+        <div class="section">
+            <h2>Web3 Tests</h2>
+            <button onclick="getBalance()">Get Balance</button>
+            <button onclick="checkNetwork()">Check Network</button>
+            <button onclick="getPaymentHistory()">Payment History</button>
+        </div>
+
+        <div class="section">
+            <h2>Response</h2>
+            <pre id="response"></pre>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3000/api';
+        let provider, signer, walletAddress;
+        let currentWallet = 'none';
+
+        // Avalanche Network Configs
+        const AVALANCHE_MAINNET = {
+            chainId: '0xA86A', // 43114 en hex
+            chainName: 'Avalanche Network',
+            nativeCurrency: {
+                name: 'AVAX',
+                symbol: 'AVAX',
+                decimals: 18
+            },
+            rpcUrls: ['https://api.avax.network/ext/bc/C/rpc'],
+            blockExplorerUrls: ['https://snowtrace.io/']
+        };
+
+        const AVALANCHE_TESTNET = {
+            chainId: '0xA869', // 43113 en hex
+            chainName: 'Avalanche Fuji Testnet',
+            nativeCurrency: {
+                name: 'AVAX',
+                symbol: 'AVAX',
+                decimals: 18
+            },
+            rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
+            blockExplorerUrls: ['https://testnet.snowtrace.io/']
+        };
+
+        function log(data) {
+            document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('walletStatus');
+            status.textContent = message;
+            status.className = type;
+        }
+
+        async function detectWallet() {
+            // Detectar Core Wallet
+            if (window.avalanche) {
+                updateStatus('Core Wallet detected', 'success');
+                currentWallet = 'core';
+                return true;
+            }
+            // Detectar MetaMask/Otros
+            else if (window.ethereum) {
+                updateStatus('MetaMask or other wallet detected', 'success');
+                currentWallet = 'metamask';
+                return true;
+            }
+            else {
+                updateStatus('No wallet detected. Please install Core Wallet or MetaMask', 'error');
+                return false;
+            }
+        }
+
+        async function connectCoreWallet() {
+            try {
+                if (!window.avalanche) {
+                    throw new Error('Core Wallet not installed. Please install Core Wallet from https://core.app/');
+                }
+
+                // Solicitar acceso a la cuenta
+                const accounts = await window.avalanche.request({
+                    method: 'eth_requestAccounts'
+                });
+
+                // Configurar provider y signer
+                provider = new ethers.providers.Web3Provider(window.avalanche);
+                signer = provider.getSigner();
+                walletAddress = accounts[0];
+
+                // Verificar red
+                const network = await provider.getNetwork();
+                
+                document.getElementById('walletAddress').textContent = walletAddress;
+                document.getElementById('networkName').textContent = network.name || 'Unknown';
+                
+                updateStatus('Core Wallet connected', 'success');
+                log({ 
+                    wallet: 'Core', 
+                    address: walletAddress,
+                    network: network 
+                });
+                
+                return true;
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+                return false;
+            }
+        }
+
+        async function connectMetaMask() {
+            try {
+                if (!window.ethereum) {
+                    throw new Error('MetaMask not installed');
+                }
+
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                walletAddress = accounts[0];
+
+                const network = await provider.getNetwork();
+                
+                document.getElementById('walletAddress').textContent = walletAddress;
+                document.getElementById('networkName').textContent = network.name || 'Unknown';
+                
+                updateStatus('MetaMask connected', 'success');
+                log({ 
+                    wallet: 'MetaMask', 
+                    address: walletAddress,
+                    network: network 
+                });
+                
+                return true;
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+                return false;
+            }
+        }
+
+        async function addAvalancheNetwork() {
+            const walletInstance = currentWallet === 'core' ? window.avalanche : window.ethereum;
+            
+            if (!walletInstance) {
+                updateStatus('No wallet connected', 'error');
+                return;
+            }
+
+            try {
+                // Intentar cambiar a Avalanche Mainnet
+                await walletInstance.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: AVALANCHE_MAINNET.chainId }],
+                });
+                
+                updateStatus('Switched to Avalanche Network', 'success');
+            } catch (switchError) {
+                // Si la red no existe, agregarla
+                if (switchError.code === 4902) {
+                    try {
+                        await walletInstance.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [AVALANCHE_MAINNET],
+                        });
+                        
+                        updateStatus('Avalanche Network added', 'success');
+                    } catch (addError) {
+                        updateStatus(`Error adding network: ${addError.message}`, 'error');
+                    }
+                } else {
+                    updateStatus(`Error switching network: ${switchError.message}`, 'error');
+                }
+            }
+        }
+
+        async function apiCall(method, endpoint, data) {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            const token = document.getElementById('token').value;
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            
+            try {
+                const response = await fetch(`${API}${endpoint}`, {
+                    method,
+                    headers,
+                    body: data ? JSON.stringify(data) : undefined
+                });
+                const result = await response.json();
+                log(result);
+                return result;
+            } catch (error) {
+                log({ error: error.message });
+            }
+        }
+
+        async function connectWalletAPI() {
+            if (!walletAddress || !signer) {
+                updateStatus('Connect wallet first', 'error');
+                return;
+            }
+
+            try {
+                const message = await apiCall('GET', '/auth/wallet-message');
+                const signature = await signer.signMessage(message.data.message);
+                
+                const result = await apiCall('POST', '/auth/connect-wallet', {
+                    walletAddress,
+                    signature,
+                    message: message.data.message
+                });
+                
+                if (result?.success) {
+                    updateStatus('Wallet connected to API', 'success');
+                }
+            } catch (error) {
+                updateStatus(`API connection error: ${error.message}`, 'error');
+            }
+        }
+
+        async function register() {
+            const result = await apiCall('POST', '/auth/register', {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                walletAddress: walletAddress
+            });
+            if (result?.data?.token) {
+                document.getElementById('token').value = result.data.token;
+            }
+        }
+
+        async function login() {
+            const result = await apiCall('POST', '/auth/login', {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            });
+            if (result?.data?.token) {
+                document.getElementById('token').value = result.data.token;
+            }
+        }
+
+        async function createDonation() {
+            const result = await apiCall('POST', '/web3/payments', {
+                toUserId: document.getElementById('toUserId').value,
+                amount: document.getElementById('amount').value,
+                type: 'donation'
+            });
+            
+            if (result?.data?.transaction) {
+                log({ message: 'Ready to send transaction', transaction: result.data.transaction });
+                
+                // Obtener el payment ID para actualizar después
+                const paymentId = result.data.payment?.id;
+                
+                // Aquí podrías enviar la transacción real con Core o MetaMask
+                updateStatus('Transaction prepared, ready to send with wallet', 'warning');
+            }
+        }
+
+        async function simulateTransaction() {
+            const amount = document.getElementById('amount').value;
+            const toAddress = '0x0000000000000000000000000000000000000000'; // Dirección de prueba
+            
+            try {
+                // Simular una transacción sin enviarla
+                const tx = {
+                    to: toAddress,
+                    value: ethers.utils.parseEther(amount)
+                };
+                
+                // Estimar gas
+                const gasEstimate = await signer.estimateGas(tx);
+                tx.gasLimit = gasEstimate;
+                
+                log({ 
+                    message: 'Transaction simulated',
+                    transaction: {
+                        ...tx,
+                        value: amount + ' AVAX',
+                        gasLimit: gasEstimate.toString()
+                    }
+                });
+                
+                // Para enviar realmente, descomentar:
+                // const txResponse = await signer.sendTransaction(tx);
+                // await txResponse.wait();
+                
+            } catch (error) {
+                updateStatus(`Transaction error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getBalance() {
+            if (!walletAddress || !provider) {
+                updateStatus('Connect wallet first', 'error');
+                return;
+            }
+            
+            try {
+                const balance = await provider.getBalance(walletAddress);
+                const avaxBalance = ethers.utils.formatEther(balance);
+                
+                log({ 
+                    address: walletAddress,
+                    balance: avaxBalance + ' AVAX'
+                });
+                
+                // También obtener balance de API
+                const apiBalance = await apiCall('GET', '/web3/balance');
+            } catch (error) {
+                updateStatus(`Error getting balance: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkNetwork() {
+            if (!provider) {
+                updateStatus('Connect wallet first', 'error');
+                return;
+            }
+            
+            try {
+                const network = await provider.getNetwork();
+                const blockNumber = await provider.getBlockNumber();
+                
+                log({
+                    network: network,
+                    blockNumber: blockNumber
+                });
+            } catch (error) {
+                updateStatus(`Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getPaymentHistory() {
+            try {
+                const history = await apiCall('GET', '/web3/payments/history');
+                log(history);
+            } catch (error) {
+                updateStatus(`Error getting payment history: ${error.message}`, 'error');
+            }
+        }
+
+        // Detectar wallet automáticamente al cargar
+        window.addEventListener('load', detectWallet);
+    </script>
+</body>
+</html>
