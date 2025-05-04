@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AvalCreator Full Test Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: white; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 3px; }
+        button:hover { background: #45a049; }
+        button.secondary { background: #008CBA; }
+        button.danger { background: #f44336; }
+        input, textarea { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 3px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; border-radius: 3px; max-height: 300px; }
+        .warning { color: orange; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+        .error { color: red; margin: 10px 0; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .info-box { background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .tabs { display: flex; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; cursor: pointer; border: 1px solid #ddd; margin-right: 5px; background: #f0f0f0; }
+        .tab.active { background: #4CAF50; color: white; border-bottom: 1px solid #4CAF50; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AvalCreator Full Test Interface</h1>
+        
+        <div class="info-box">
+            <h3>System Information</h3>
+            <p><strong>Contract:</strong> 0x0AfcC4e0338920fC4398cbAC201093C85F6e94D5</p>
+            <p><strong>API:</strong> https://hack-backend.cap.c2developers.com/api</p>
+            <p><strong>Network:</strong> Avalanche Fuji Testnet</p>
+            <p><strong>Your Address:</strong> <span id="walletAddress">Not connected</span></p>
+            <p><strong>Your JWT:</strong> <input id="token" placeholder="JWT token" style="width: 500px; font-size: 12px;"></p>
+        </div>
+
+        <div class="section">
+            <h2>Connection</h2>
+            <div id="walletStatus" class="warning">No wallet detected</div>
+            <button onclick="connectCoreWallet()">Connect Core Wallet</button>
+            <button onclick="connectMetaMask()">Connect MetaMask</button>
+            <button onclick="addAvalancheNetwork()">Switch to Fuji Network</button>
+            <button onclick="checkContractConnection()" class="secondary">Test Contract</button>
+            <button onclick="checkBackendConnection()" class="secondary">Test Backend</button>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(event, 'auth')">Authentication</div>
+            <div class="tab" onclick="switchTab(event, 'content')">Content Management</div>
+            <div class="tab" onclick="switchTab(event, 'payments')">Payments & Donations</div>
+            <div class="tab" onclick="switchTab(event, 'verification')">Verification</div>
+        </div>
+
+        <div id="auth" class="tab-content active">
+            <div class="grid">
+                <div class="section">
+                    <h3>Backend Authentication</h3>
+                    <input id="email" placeholder="Email" value="test@example.com">
+                    <input id="password" type="password" placeholder="Password" value="password123">
+                    <button onclick="register()">Register</button>
+                    <button onclick="login()">Login</button>
+                    <button onclick="connectWalletToBackend()">Connect Wallet to Backend</button>
+                </div>
+                <div class="section">
+                    <h3>User Info</h3>
+                    <button onclick="getCurrentUser()">Get Current User</button>
+                    <button onclick="getWalletBalance()">Get AVAX Balance</button>
+                    <button onclick="becomeCreator()">Become Creator</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="content" class="tab-content">
+            <div class="grid">
+                <div class="section">
+                    <h3>Register Content (Backend)</h3>
+                    <input id="contentTitle" placeholder="Content Title" value="Test Content">
+                    <input id="contentPrice" placeholder="Price in AVAX" value="0.01">
+                    <button onclick="registerContentBackend()">Register via Backend</button>
+                </div>
+                <div class="section">
+                    <h3>Direct Contract Interaction</h3>
+                    <input id="directContentId" placeholder="Content ID" value="TEST_CONTENT_001">
+                    <input id="directContentPrice" placeholder="Price in AVAX" value="0.01">
+                    <button onclick="registerContentContract()">Register on Contract</button>
+                </div>
+            </div>
+            <div class="section">
+                <h3>Content Operations</h3>
+                <input id="contentIdToCheck" placeholder="Content ID" value="TEST_CONTENT_001">
+                <button onclick="getContentDetails()">Get Details (Contract)</button>
+                <button onclick="getContentFromBackend()">Get Content (Backend)</button>
+                <button onclick="getAllContent()">List All Content</button>
+            </div>
+        </div>
+
+        <div id="payments" class="tab-content">
+            <div class="grid">
+                <div class="section">
+                    <h3>Purchase Content (Full Flow)</h3>
+                    <input id="purchaseContentId" placeholder="Content ID" value="TEST_CONTENT_001">
+                    <button onclick="purchaseContentFlow()">Purchase Content</button>
+                </div>
+                <div class="section">
+                    <h3>Send Donation (Full Flow)</h3>
+                    <input id="donationUserId" placeholder="Recipient User ID">
+                    <input id="donationAmount" placeholder="Amount in AVAX" value="0.01">
+                    <input id="donationMessage" placeholder="Message">
+                    <button onclick="sendDonationFlow()">Send Donation</button>
+                </div>
+            </div>
+            <div class="section">
+                <h3>Payment History</h3>
+                <button onclick="getPaymentHistory()">Get Payment History</button>
+                <button onclick="listenForEvents()">Listen for New Events</button>
+            </div>
+        </div>
+
+        <div id="verification" class="tab-content">
+            <div class="section">
+                <h3>Payment Verification</h3>
+                <input id="verifyPaymentId" placeholder="Payment ID">
+                <button onclick="verifyPaymentBackend()">Verify in Backend</button>
+                <button onclick="verifyPaymentContract()">Verify on Contract</button>
+                <button onclick="getPaymentStatusBackend()">Get Payment Status</button>
+            </div>
+            <div class="section">
+                <h3>Ownership Verification</h3>
+                <input id="ownershipContentId" placeholder="Content ID" value="TEST_CONTENT_001">
+                <button onclick="checkOwnershipBackend()">Check via Backend</button>
+                <button onclick="checkOwnershipContract()">Check on Contract</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Response/Logs</h2>
+            <pre id="response"></pre>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3000/api';
+        const CONTRACT_ADDRESS = "0x0AfcC4e0338920fC4398cbAC201093C85F6e94D5";
+        let provider, signer, walletAddress, contract;
+
+        const CONTRACT_ABI = [
+            "function platformFeePercentage() view returns (uint256)",
+            "function platformWallet() view returns (address)",
+            "function registerContent(string contentId, uint256 price)",
+            "function purchaseContent(string contentId, address creator) payable",
+            "function donate(address to, string message) payable",
+            "function verifyPayment(string paymentId) view returns (bool)",
+            "function getContentOwnership(string contentId) view returns (address)",
+            "function getContentCreator(string contentId) view returns (address)",
+            "function getPayment(string paymentId) view returns (address, address, uint256, string, uint256, bool)",
+            "function getContentDetails(string contentId) view returns (address, uint256, bool, uint256, address)",
+            "function getContractBalance() view returns (uint256)",
+            "event Payment(address indexed from, address indexed to, uint256 amount, string contentId, uint256 timestamp)",
+            "event ContentPurchased(address indexed buyer, address indexed creator, string contentId, uint256 price, uint256 timestamp)",
+            "event Donation(address indexed from, address indexed to, uint256 amount, string message, uint256 timestamp)",
+            "event ContentRegistered(string contentId, address indexed creator, uint256 price, uint256 timestamp)"
+        ];
+
+        function switchTab(evt, tabName) {
+            const tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            const tablinks = document.getElementsByClassName("tab");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function log(data) {
+            document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            console.log(data);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('walletStatus');
+            status.textContent = message;
+            status.className = type;
+        }
+
+        async function apiCall(method, endpoint, data) {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            const token = document.getElementById('token').value;
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            
+            try {
+                const response = await fetch(`${API}${endpoint}`, {
+                    method,
+                    headers,
+                    body: data ? JSON.stringify(data) : undefined
+                });
+                const result = await response.json();
+                log(result);
+                return result;
+            } catch (error) {
+                log({ error: error.message });
+                return null;
+            }
+        }
+
+        async function connectCoreWallet() {
+            try {
+                if (!window.avalanche) throw new Error('Core Wallet not installed');
+                
+                const accounts = await window.avalanche.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.avalanche);
+                signer = provider.getSigner();
+                walletAddress = accounts[0];
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                
+                document.getElementById('walletAddress').textContent = walletAddress;
+                updateStatus('Core Wallet connected', 'success');
+                
+                const network = await provider.getNetwork();
+                if (network.chainId !== 43113) {
+                    await addAvalancheNetwork();
+                }
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function addAvalancheNetwork() {
+            const AVALANCHE_TESTNET = {
+                chainId: '0xA869',
+                chainName: 'Avalanche Fuji Testnet',
+                nativeCurrency: { name: 'AVAX', symbol: 'AVAX', decimals: 18 },
+                rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
+                blockExplorerUrls: ['https://testnet.snowtrace.io/']
+            };
+
+            try {
+                await window.avalanche.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [AVALANCHE_TESTNET],
+                });
+                updateStatus('Switched to Fuji Network', 'success');
+            } catch (error) {
+                updateStatus(`Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkContractConnection() {
+            try {
+                if (!contract) throw new Error('Connect wallet first');
+                const platformFee = await contract.platformFeePercentage();
+                log({ contractConnected: true, platformFee: platformFee.toString() + '%' });
+            } catch (error) {
+                log({ contractConnected: false, error: error.message });
+            }
+        }
+
+        async function checkBackendConnection() {
+            const result = await apiCall('GET', '/web3/health');
+            if (result?.success) {
+                log({ backendConnected: true, response: result });
+            } else {
+                log({ backendConnected: false, error: 'Backend not responding' });
+            }
+        }
+
+        async function register() {
+            const result = await apiCall('POST', '/auth/register', {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                walletAddress: walletAddress
+            });
+            if (result?.data?.token) {
+                document.getElementById('token').value = result.data.token;
+            }
+        }
+
+        async function login() {
+            const result = await apiCall('POST', '/auth/login', {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            });
+            if (result?.data?.token) {
+                document.getElementById('token').value = result.data.token;
+            }
+        }
+
+        async function connectWalletToBackend() {
+            if (!signer || !walletAddress) {
+                updateStatus('Connect wallet first', 'error');
+                return;
+            }
+
+            try {
+                const messageRes = await apiCall('GET', '/auth/wallet-message');
+                const signature = await signer.signMessage(messageRes.data.message);
+                
+                const result = await apiCall('POST', '/auth/connect-wallet', {
+                    walletAddress,
+                    signature,
+                    message: messageRes.data.message
+                });
+                
+                if (result?.success) {
+                    updateStatus('Wallet connected to backend', 'success');
+                }
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function registerContentBackend() {
+            const result = await apiCall('POST', '/content', {
+                title: document.getElementById('contentTitle').value,
+                price: document.getElementById('contentPrice').value
+            });
+            
+            if (result?.data?.id) {
+                document.getElementById('directContentId').value = result.data.id;
+                log({ message: 'Content registered in backend', contentId: result.data.id });
+            }
+        }
+
+        async function registerContentContract() {
+            try {
+                if (!contract) throw new Error('Connect wallet first');
+                
+                const contentId = document.getElementById('directContentId').value;
+                const price = document.getElementById('directContentPrice').value;
+                const priceInWei = ethers.utils.parseEther(price);
+                
+                const tx = await contract.registerContent(contentId, priceInWei);
+                log({ message: 'Transaction sent', txHash: tx.hash });
+                
+                const receipt = await tx.wait();
+                log({ message: 'Content registered on contract', contentId, txHash: receipt.transactionHash });
+            } catch (error) {
+                log({ error: error.message });
+            }
+        }
+
+        async function purchaseContentFlow() {
+            try {
+                const contentId = document.getElementById('purchaseContentId').value;
+                
+                // Step 1: Get content details from backend
+                const content = await apiCall('GET', `/content/${contentId}`);
+                if (!content?.data) throw new Error('Content not found');
+                
+                // Step 2: Create payment intent in backend
+                const payment = await apiCall('POST', '/web3/payments', {
+                    toUserId: content.data.creatorId,
+                    amount: content.data.price,
+                    type: 'purchase',
+                    contentId: contentId
+                });
+                
+                if (!payment?.data) throw new Error('Payment creation failed');
+                
+                // Step 3: Execute transaction on contract
+                const priceInWei = ethers.utils.parseEther(content.data.price.toString());
+                const tx = await contract.purchaseContent(contentId, content.data.creator.id, { value: priceInWei });
+                
+                // Step 4: Update payment with transaction hash
+                await apiCall('PATCH', `/web3/payments/${payment.data.payment.id}`, {
+                    transactionHash: tx.hash,
+                    status: 'completed'
+                });
+                
+                const receipt = await tx.wait();
+                log({ 
+                    message: 'Purchase completed', 
+                    contentId, 
+                    txHash: receipt.transactionHash,
+                    paymentId: payment.data.payment.id
+                });
+            } catch (error) {
+                log({ error: error.message });
+            }
+        }
+
+        async function sendDonationFlow() {
+            try {
+                const toUserId = document.getElementById('donationUserId').value;
+                const amount = document.getElementById('donationAmount').value;
+                const message = document.getElementById('donationMessage').value;
+                
+                // Step 1: Create payment intent in backend
+                const payment = await apiCall('POST', '/web3/payments', {
+                    toUserId: toUserId,
+                    amount: amount,
+                    type: 'donation'
+                });
+                
+                if (!payment?.data) throw new Error('Payment creation failed');
+                
+                // Step 2: Execute donation on contract
+                const amountInWei = ethers.utils.parseEther(amount);
+                const recipient = payment.data.transaction.to;
+                
+                const tx = await contract.donate(recipient, message || '', { value: amountInWei });
+                
+                // Step 3: Update payment with transaction hash
+                await apiCall('PATCH', `/web3/payments/${payment.data.payment.id}`, {
+                    transactionHash: tx.hash,
+                    status: 'completed'
+                });
+                
+                const receipt = await tx.wait();
+                log({ 
+                    message: 'Donation sent', 
+                    txHash: receipt.transactionHash,
+                    paymentId: payment.data.payment.id
+                });
+            } catch (error) {
+                log({ error: error.message });
+            }
+        }
+
+        async function getPaymentHistory() {
+            const history = await apiCall('GET', '/web3/payments/history');
+        }
+
+        async function listenForEvents() {
+            if (!contract) {
+                updateStatus('Connect wallet first', 'error');
+                return;
+            }
+
+            contract.on('Payment', (from, to, amount, contentId, timestamp) => {
+                log({
+                    event: 'Payment',
+                    from, to,
+                    amount: ethers.utils.formatEther(amount) + ' AVAX',
+                    contentId,
+                    timestamp: new Date(timestamp * 1000).toLocaleString()
+                });
+            });
+
+            contract.on('ContentPurchased', (buyer, creator, contentId, price, timestamp) => {
+                log({
+                    event: 'ContentPurchased',
+                    buyer, creator, contentId,
+                    price: ethers.utils.formatEther(price) + ' AVAX',
+                    timestamp: new Date(timestamp * 1000).toLocaleString()
+                });
+            });
+
+            log({ message: 'Event listeners started' });
+        }
+
+        async function verifyPaymentBackend() {
+            const paymentId = document.getElementById('verifyPaymentId').value;
+            const result = await apiCall('GET', `/web3/payments/${paymentId}/verify`);
+        }
+
+        async function verifyPaymentContract() {
+            const paymentId = document.getElementById('verifyPaymentId').value;
+            const isVerified = await contract.verifyPayment(paymentId);
+            log({ paymentId, isVerified });
+        }
+
+        async function getPaymentStatusBackend() {
+            const paymentId = document.getElementById('verifyPaymentId').value;
+            const result = await apiCall('GET', `/web3/payments/${paymentId}/status`);
+        }
+
+        async function checkOwnershipContract() {
+            const contentId = document.getElementById('ownershipContentId').value;
+            const owner = await contract.getContentOwnership(contentId);
+            log({ contentId, owner, isYours: owner.toLowerCase() === walletAddress.toLowerCase() });
+        }
+
+        window.addEventListener('load', () => {
+            if (window.avalanche) {
+                updateStatus('Core Wallet detected', 'success');
+            } else if (window.ethereum) {
+                updateStatus('MetaMask detected', 'success');
+            }
+        });
+    </script>
+</body>
+</html>

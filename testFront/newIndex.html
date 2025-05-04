@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AvalCreator Contract Test Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .section { margin-bottom: 30px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 3px; }
+        button:hover { background: #45a049; }
+        input, textarea { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 3px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; border-radius: 3px; }
+        .warning { color: orange; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+        .error { color: red; margin: 10px 0; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .contract-info { background: #e8f5e9; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AvalCreator Contract Test Interface</h1>
+        
+        <div class="contract-info">
+            <h3>Contract Information</h3>
+            <p><strong>Address:</strong> 0x0AfcC4e0338920fC4398cbAC201093C85F6e94D5</p>
+            <p><strong>Network:</strong> Avalanche Fuji Testnet</p>
+            <p><strong>Platform Fee:</strong> 1%</p>
+        </div>
+
+        <div class="section">
+            <h2>Wallet Connection</h2>
+            <div id="walletStatus" class="warning">No wallet detected</div>
+            <button onclick="connectCoreWallet()">Connect Core Wallet</button>
+            <button onclick="connectMetaMask()">Connect MetaMask</button>
+            <button onclick="checkContractConnection()">Check Contract Connection</button>
+            <div>Address: <span id="walletAddress"></span></div>
+            <div>Network: <span id="networkName"></span></div>
+            <div>Balance: <span id="walletBalance"></span></div>
+        </div>
+
+        <div class="grid">
+            <div class="section">
+                <h2>Register Content</h2>
+                <input id="contentId" placeholder="Content ID" value="TEST_CONTENT_001">
+                <input id="contentPrice" placeholder="Price in AVAX" value="0.01">
+                <button onclick="registerContent()">Register Content</button>
+            </div>
+
+            <div class="section">
+                <h2>Purchase Content</h2>
+                <input id="purchaseContentId" placeholder="Content ID" value="TEST_CONTENT_001">
+                <input id="creatorAddress" placeholder="Creator Address">
+                <button onclick="purchaseContent()">Purchase Content</button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="section">
+                <h2>Send Donation</h2>
+                <input id="donationAddress" placeholder="Recipient Address">
+                <input id="donationAmount" placeholder="Amount in AVAX" value="0.01">
+                <input id="donationMessage" placeholder="Message">
+                <button onclick="sendDonation()">Send Donation</button>
+            </div>
+
+            <div class="section">
+                <h2>Content Details</h2>
+                <input id="checkContentId" placeholder="Content ID" value="TEST_CONTENT_001">
+                <button onclick="getContentDetails()">Get Details</button>
+                <button onclick="checkContentOwnership()">Check Ownership</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Payment Verification</h2>
+            <input id="paymentId" placeholder="Payment ID">
+            <button onclick="verifyPayment()">Verify Payment</button>
+            <button onclick="getPaymentDetails()">Get Payment Details</button>
+        </div>
+
+        <div class="section">
+            <h2>Contract Information</h2>
+            <button onclick="getPlatformInfo()">Get Platform Info</button>
+            <button onclick="getContractBalance()">Get Contract Balance</button>
+            <button onclick="getAllEvents()">Listen for Events</button>
+        </div>
+
+        <div class="section">
+            <h2>Response/Logs</h2>
+            <pre id="response"></pre>
+        </div>
+    </div>
+
+    <script>
+        const CONTRACT_ADDRESS = "0x0AfcC4e0338920fC4398cbAC201093C85F6e94D5";
+        let provider, signer, walletAddress, contract;
+        
+        // Contract ABI - Full ABI for AvalCreator
+        const CONTRACT_ABI = [
+            "function platformFeePercentage() view returns (uint256)",
+            "function platformWallet() view returns (address)",
+            "function registerContent(string contentId, uint256 price)",
+            "function purchaseContent(string contentId, address creator) payable",
+            "function donate(address to, string message) payable",
+            "function verifyPayment(string paymentId) view returns (bool)",
+            "function getContentOwnership(string contentId) view returns (address)",
+            "function getContentCreator(string contentId) view returns (address)",
+            "function getPayment(string paymentId) view returns (address, address, uint256, string, uint256, bool)",
+            "function getContentDetails(string contentId) view returns (address, uint256, bool, uint256, address)",
+            "function getContractBalance() view returns (uint256)",
+            "event Payment(address indexed from, address indexed to, uint256 amount, string contentId, uint256 timestamp)",
+            "event ContentPurchased(address indexed buyer, address indexed creator, string contentId, uint256 price, uint256 timestamp)",
+            "event Donation(address indexed from, address indexed to, uint256 amount, string message, uint256 timestamp)",
+            "event ContentRegistered(string contentId, address indexed creator, uint256 price, uint256 timestamp)",
+            "event OwnershipTransferred(string contentId, address indexed from, address indexed to, uint256 timestamp)"
+        ];
+
+        function log(data) {
+            document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('walletStatus');
+            status.textContent = message;
+            status.className = type;
+        }
+
+        async function connectCoreWallet() {
+            try {
+                if (!window.avalanche) {
+                    throw new Error('Core Wallet not installed');
+                }
+
+                const accounts = await window.avalanche.request({
+                    method: 'eth_requestAccounts'
+                });
+
+                provider = new ethers.providers.Web3Provider(window.avalanche);
+                signer = provider.getSigner();
+                walletAddress = accounts[0];
+
+                // Connect to contract
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // Update UI
+                const network = await provider.getNetwork();
+                const balance = await provider.getBalance(walletAddress);
+                
+                document.getElementById('walletAddress').textContent = walletAddress;
+                document.getElementById('networkName').textContent = network.name;
+                document.getElementById('walletBalance').textContent = ethers.utils.formatEther(balance) + ' AVAX';
+                document.getElementById('creatorAddress').value = walletAddress;
+                document.getElementById('donationAddress').value = walletAddress;
+                
+                updateStatus('Core Wallet connected', 'success');
+                log({ 
+                    wallet: 'Core', 
+                    address: walletAddress,
+                    network: network,
+                    balance: ethers.utils.formatEther(balance) + ' AVAX'
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function connectMetaMask() {
+            try {
+                if (!window.ethereum) {
+                    throw new Error('MetaMask not installed');
+                }
+
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                walletAddress = accounts[0];
+
+                // Connect to contract
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // Update UI
+                const network = await provider.getNetwork();
+                const balance = await provider.getBalance(walletAddress);
+                
+                document.getElementById('walletAddress').textContent = walletAddress;
+                document.getElementById('networkName').textContent = network.name;
+                document.getElementById('walletBalance').textContent = ethers.utils.formatEther(balance) + ' AVAX';
+                document.getElementById('creatorAddress').value = walletAddress;
+                document.getElementById('donationAddress').value = walletAddress;
+                
+                updateStatus('MetaMask connected', 'success');
+                log({ 
+                    wallet: 'MetaMask', 
+                    address: walletAddress,
+                    network: network,
+                    balance: ethers.utils.formatEther(balance) + ' AVAX'
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function checkContractConnection() {
+            try {
+                if (!contract) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const platformFee = await contract.platformFeePercentage();
+                const platformWallet = await contract.platformWallet();
+                const contractBalance = await contract.getContractBalance();
+
+                log({
+                    contractAddress: CONTRACT_ADDRESS,
+                    platformFee: platformFee.toString() + '%',
+                    platformWallet: platformWallet,
+                    contractBalance: ethers.utils.formatEther(contractBalance) + ' AVAX'
+                });
+            } catch (error) {
+                updateStatus(`Contract error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function registerContent() {
+            try {
+                if (!contract || !signer) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const contentId = document.getElementById('contentId').value;
+                const price = document.getElementById('contentPrice').value;
+                
+                if (!contentId || !price) {
+                    throw new Error('Content ID and price required');
+                }
+
+                const priceInWei = ethers.utils.parseEther(price);
+                
+                log({ message: 'Registering content...', contentId, price });
+                
+                const tx = await contract.registerContent(contentId, priceInWei);
+                log({ message: 'Transaction sent', txHash: tx.hash });
+                
+                const receipt = await tx.wait();
+                log({ 
+                    message: 'Content registered successfully!',
+                    contentId,
+                    price,
+                    txHash: receipt.transactionHash
+                });
+            } catch (error) {
+                updateStatus(`Registration error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function purchaseContent() {
+            try {
+                if (!contract || !signer) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const contentId = document.getElementById('purchaseContentId').value;
+                const creatorAddress = document.getElementById('creatorAddress').value;
+                
+                if (!contentId || !creatorAddress) {
+                    throw new Error('Content ID and creator address required');
+                }
+
+                // Get content details first
+                const details = await contract.getContentDetails(contentId);
+                const price = details[1];
+                
+                log({ 
+                    message: 'Purchasing content...', 
+                    contentId, 
+                    creatorAddress,
+                    price: ethers.utils.formatEther(price) + ' AVAX'
+                });
+                
+                const tx = await contract.purchaseContent(contentId, creatorAddress, { value: price });
+                log({ message: 'Transaction sent', txHash: tx.hash });
+                
+                const receipt = await tx.wait();
+                log({ 
+                    message: 'Content purchased successfully!',
+                    contentId,
+                    txHash: receipt.transactionHash
+                });
+            } catch (error) {
+                updateStatus(`Purchase error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function sendDonation() {
+            try {
+                if (!contract || !signer) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const toAddress = document.getElementById('donationAddress').value;
+                const amount = document.getElementById('donationAmount').value;
+                const message = document.getElementById('donationMessage').value;
+                
+                if (!toAddress || !amount) {
+                    throw new Error('Address and amount required');
+                }
+
+                const amountInWei = ethers.utils.parseEther(amount);
+                
+                log({ message: 'Sending donation...', toAddress, amount, message: message || 'No message' });
+                
+                const tx = await contract.donate(toAddress, message || '', { value: amountInWei });
+                log({ message: 'Transaction sent', txHash: tx.hash });
+                
+                const receipt = await tx.wait();
+                log({ 
+                    message: 'Donation sent successfully!',
+                    toAddress,
+                    amount,
+                    txHash: receipt.transactionHash
+                });
+            } catch (error) {
+                updateStatus(`Donation error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function getContentDetails() {
+            try {
+                if (!contract) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const contentId = document.getElementById('checkContentId').value;
+                
+                if (!contentId) {
+                    throw new Error('Content ID required');
+                }
+
+                const details = await contract.getContentDetails(contentId);
+                const creator = await contract.getContentCreator(contentId);
+                
+                log({
+                    contentId,
+                    owner: details[0],
+                    price: ethers.utils.formatEther(details[1]) + ' AVAX',
+                    isForSale: details[2],
+                    lastSaleTimestamp: new Date(details[3] * 1000).toLocaleString(),
+                    creator: details[4]
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function checkContentOwnership() {
+            try {
+                if (!contract) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const contentId = document.getElementById('checkContentId').value;
+                
+                if (!contentId) {
+                    throw new Error('Content ID required');
+                }
+
+                const owner = await contract.getContentOwnership(contentId);
+                
+                log({
+                    contentId,
+                    owner,
+                    isYourContent: owner.toLowerCase() === walletAddress.toLowerCase()
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function verifyPayment() {
+            try {
+                if (!contract) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const paymentId = document.getElementById('paymentId').value;
+                
+                if (!paymentId) {
+                    throw new Error('Payment ID required');
+                }
+
+                const isVerified = await contract.verifyPayment(paymentId);
+                
+                log({
+                    paymentId,
+                    isVerified
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function getPaymentDetails() {
+            try {
+                if (!contract) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const paymentId = document.getElementById('paymentId').value;
+                
+                if (!paymentId) {
+                    throw new Error('Payment ID required');
+                }
+
+                const payment = await contract.getPayment(paymentId);
+                
+                log({
+                    paymentId,
+                    from: payment[0],
+                    to: payment[1],
+                    amount: ethers.utils.formatEther(payment[2]) + ' AVAX',
+                    contentId: payment[3],
+                    timestamp: new Date(payment[4] * 1000).toLocaleString(),
+                    verified: payment[5]
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function getPlatformInfo() {
+            try {
+                if (!contract) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const platformFee = await contract.platformFeePercentage();
+                const platformWallet = await contract.platformWallet();
+                
+                log({
+                    platformFee: platformFee.toString() + '%',
+                    platformWallet
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        async function getContractBalance() {
+            try {
+                if (!contract) {
+                    throw new Error('Connect wallet first');
+                }
+
+                const balance = await contract.getContractBalance();
+                
+                log({
+                    contractBalance: ethers.utils.formatEther(balance) + ' AVAX'
+                });
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                log({ error: error.message });
+            }
+        }
+
+        function getAllEvents() {
+            if (!contract) {
+                updateStatus('Connect wallet first', 'error');
+                return;
+            }
+
+            log({ message: 'Starting event listeners...' });
+
+            contract.on('Payment', (from, to, amount, contentId, timestamp) => {
+                log({
+                    event: 'Payment',
+                    from,
+                    to,
+                    amount: ethers.utils.formatEther(amount) + ' AVAX',
+                    contentId,
+                    timestamp: new Date(timestamp * 1000).toLocaleString()
+                });
+            });
+
+            contract.on('ContentPurchased', (buyer, creator, contentId, price, timestamp) => {
+                log({
+                    event: 'ContentPurchased',
+                    buyer,
+                    creator,
+                    contentId,
+                    price: ethers.utils.formatEther(price) + ' AVAX',
+                    timestamp: new Date(timestamp * 1000).toLocaleString()
+                });
+            });
+
+            contract.on('Donation', (from, to, amount, message, timestamp) => {
+                log({
+                    event: 'Donation',
+                    from,
+                    to,
+                    amount: ethers.utils.formatEther(amount) + ' AVAX',
+                    message,
+                    timestamp: new Date(timestamp * 1000).toLocaleString()
+                });
+            });
+
+            contract.on('ContentRegistered', (contentId, creator, price, timestamp) => {
+                log({
+                    event: 'ContentRegistered',
+                    contentId,
+                    creator,
+                    price: ethers.utils.formatEther(price) + ' AVAX',
+                    timestamp: new Date(timestamp * 1000).toLocaleString()
+                });
+            });
+
+            updateStatus('Event listeners started', 'success');
+        }
+    </script>
+</body>
+</html>
