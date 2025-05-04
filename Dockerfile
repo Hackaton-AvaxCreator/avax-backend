@@ -1,20 +1,28 @@
-# Utilizamos la imagen oficial de oven/bun como imagen base
+# Use official oven/bun as base image
 FROM oven/bun:latest
 
-# Establecemos el directorio de trabajo en el contenedor
+# Set working directory
 WORKDIR /app
 
-# Copiamos los archivos de nuestro proyecto al contenedor
-COPY . .
+# Copy package files first for better caching
+COPY package.json tsconfig.json ./
+COPY prisma ./prisma
 
-# add zip command
-RUN apt-get update && apt-get install -y zip
-# Instalamos las dependencias de nuestro proyecto usando bun
+# Install dependencies
 RUN bun pm cache rm --all
 RUN bun install
 
-# Expone el puerto en el que tu aplicación estará escuchando
+# Copy application files
+COPY . .
+
+# Build the application
+RUN bun run build
+
+# Generate Prisma client
+RUN bun run db:generate
+
+# Expose the port
 EXPOSE 3010
 
-# El comando para iniciar tu aplicación
-CMD ["bun", "start"]
+# Start command - using bun run start
+CMD ["bun", "run", "start"]
