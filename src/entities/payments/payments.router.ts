@@ -1,24 +1,23 @@
-// // src/payments/payments.router.ts
-// import { Router } from 'express'
-// // import { paymentsController } from './payments.controller'
-// import { catchAsync } from '../../shared/middleware/error.middleware'
+// src/entities/payments/payments.router.ts
+import { Router } from 'express'
+import { paymentsController } from './payments.controller'
 
-// const router = Router()
+const router = Router()
 
-// // Payment routes
-// // router.get('/', catchAsync(paymentsController.getAll))
-// // router.get('/:id', catchAsync(paymentsController.getById))
-// // router.get('/user/:userId', catchAsync(paymentsController.getByUser))
-// // router.get('/content/:contentId', catchAsync(paymentsController.getByContent))
+// Payment routes
+router.get('/', paymentsController.getAll)
+router.get('/:id', paymentsController.getById)
+router.get('/user/:userId', paymentsController.getByUser)
+router.get('/content/:contentId', paymentsController.getByContent)
 
-// // // Create payment
-// // router.post('/', catchAsync(paymentsController.create))
+// Create payment
+router.post('/', paymentsController.create)
 
-// // // Payment status
-// // router.get('/:id/status', catchAsync(paymentsController.getStatus))
+// Payment status
+router.get('/:id/status', paymentsController.getStatus)
 
-// // // Earnings and fees
-// // router.get('/earnings', catchAsync(paymentsController.getUserEarnings))
-// // router.get('/platform-fees', catchAsync(paymentsController.getPlatformFees))
+// Earnings and fees
+router.get('/earnings', paymentsController.getUserEarnings)
+router.get('/platform-fees', paymentsController.getPlatformFees)
 
-// export default router
+export default router

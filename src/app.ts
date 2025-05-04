@@ -2,13 +2,18 @@
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
-// import compression from 'compression'
+import compression from 'compression'
 
 // Routers
 import authRouter from './entities/auth/auth.router'
+import contentRouter from './entities/content/content.router'
+import paymentsRouter from './entities/payments/payments.router'
+import tokensRouter from './entities/tokens/tokens.router'
+import usersRouter from './entities/users/users.router'
 
 // Middleware
 import { errorMiddleware } from './shared/middleware/error.middleware'
+import { authMiddleware } from './shared/middleware/auth.middleware'
 
 const app = express()
 
@@ -22,16 +27,16 @@ app.use(cors(
     allowedHeaders: ['Content-Type', 'Authorization']
   }
 ))
-// app.use(compression())
+app.use(compression())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 // API routes
 app.use('/api/auth', authRouter)
-// app.use('/api/users', authMiddleware, usersRouter)
-// app.use('/api/content', authMiddleware, contentRouter)
-// app.use('/api/payments', authMiddleware, paymentsRouter)
-// app.use('/api/tokens', authMiddleware, tokensRouter)
+app.use('/api/users', authMiddleware, usersRouter)
+app.use('/api/content', authMiddleware, contentRouter)
+app.use('/api/payments', authMiddleware, paymentsRouter)
+app.use('/api/tokens', authMiddleware, tokensRouter)
 
 // Error handling
 app.use(errorMiddleware)
